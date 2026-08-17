@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:chinatax:invoice:fapiao">
+  <InvoiceHeader>
+    <InvoiceType>026</InvoiceType>
+    <InvoiceNo>24512000000087654321</InvoiceNo>
+    <IssueDate>2026年07月25日</IssueDate>
+    <MachineNo>499000123456</MachineNo>
+  </InvoiceHeader>
+  <Buyer>
+    <TaxpayerName>深圳市宏图电子科技有限公司</TaxpayerName>
+    <TaxpayerNo>91440300MA5EFT7X2B</TaxpayerNo>
+  </Buyer>
+  <Seller>
+    <TaxpayerName>上海数联信息技术服务有限公司</TaxpayerName>
+    <TaxpayerNo>91310115MA1K45T9XC</TaxpayerNo>
+  </Seller>
+  <IssueData>
+    <GoodsName>*信息技术服务*云平台年度服务费</GoodsName>
+    <Amount>14150.94</Amount>
+    <TaxRate>6%</TaxRate>
+    <TaxAmount>849.06</TaxAmount>
+    <TotalAmount>15000.00</TotalAmount>
+  </IssueData>
+  <Summary>
+    <TotalAmountWithoutTax>14150.94</TotalAmountWithoutTax>
+    <TotalTaxAmount>849.06</TotalTaxAmount>
+    <TotalAmountWithTax>15000.00</TotalAmountWithTax>
+  </Summary>
+</Invoice>

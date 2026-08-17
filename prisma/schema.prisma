@@ -1,0 +1,213 @@
+// 财务月结 AI 演示系统 - 数据模型
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ============ 主数据 ============
+
+// 用户（演示账号）
+model User {
+  id        Int     @id @default(autoincrement())
+  username  String  @unique
+  password  String
+  name      String
+  role      String // admin / finance / auditor
+  createdAt DateTime @default(now())
+}
+
+// 会计科目
+model Subject {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique // 科目编码，如 1002
+  name      String // 银行存款
+  type      String // 资产/负债/权益/成本/损益
+  direction String // 借/贷
+  level     Int     @default(1)
+}
+
+// 客商（供应商/客户）
+model Partner {
+  id        Int    @id @default(autoincrement())
+  code      String @unique
+  name      String
+  type      String // supplier / customer
+  taxId     String? // 纳税人识别号
+  bankAccount String?
+}
+
+// 银行账户
+model BankAccount {
+  id           Int    @id @default(autoincrement())
+  bankName     String // 工商银行
+  accountNo    String @unique
+  accountName  String // 深圳示例科技有限公司
+  currency     String @default("CNY")
+  balance      Float  @default(0)
+  transactions BankTransaction[]
+  ledgerEntries LedgerEntry[]
+}
+
+// ============ 业务流水 ============
+
+// 银行流水（银行侧）
+model BankTransaction {
+  id                 Int     @id @default(autoincrement())
+  accountId          Int
+  account            BankAccount @relation(fields: [accountId], references: [id])
+  txDate             String // 2026-07-15
+  amount             Float // 正数，方向由 direction 决定
+  direction          String // 收 / 付
+  counterparty       String // 对方户名
+  counterpartyAccount String? // 对方账号
+  summary            String // 摘要
+  bankRef            String  @unique // 银行流水号
+  matchStatus        String  @default("unmatched") // matched / unmatched / flagged
+  matchedLedgerId    Int? @unique // 匹配到的账套流水
+  ledgerEntry        LedgerEntry? @relation("BankMatch", fields: [matchedLedgerId], references: [id])
+  createdAt          DateTime @default(now())
+}
+
+// 账套流水（ERP 侧，银行日记账）
+model LedgerEntry {
+  id          Int     @id @default(autoincrement())
+  accountId   Int
+  account     BankAccount @relation(fields: [accountId], references: [id])
+  txDate      String
+  amount      Float
+  direction   String // 借 / 贷
+  counterparty String
+  summary     String
+  voucherNo   String // 凭证号，如 记-0721
+  matchStatus String @default("unmatched")
+  matchedBank BankTransaction? @relation("BankMatch")
+  createdAt   DateTime @default(now())
+}
+
+// ============ 发票 ============
+
+model Invoice {
+  id          Int     @id @default(autoincrement())
+  invoiceNo   String  @unique // 发票号码
+  invoiceCode String? // 发票代码
+  type        String // 增值税专用发票 / 增值税普通发票 / 数电票
+  issueDate   String
+  seller      String // 销方
+  buyer       String // 购方
+  amount      Float // 不含税金额
+  taxRate     Float // 税率 0.13
+  taxAmount   Float // 税额
+  totalAmount Float // 价税合计
+  category    String? // 费用类别：办公费/差旅费/服务费...
+  sourceType  String  @default("manual") // ocr / xml / manual
+  filePath    String? // 上传的影像路径
+  ocrText     String? // OCR 原始文本
+  confidence  Float   @default(1) // AI 置信度 0~1
+  status      String  @default("pending") // pending / verified / rejected / voucherized
+  checkStatus String  @default("unchecked") // unchecked / verified / fake / error 查验状态
+  createdAt   DateTime @default(now())
+  invoices VoucherItem[]
+
+  @@map("invoices")
+}
+
+// ============ 凭证 ============
+
+model Voucher {
+  id          Int     @id @default(autoincrement())
+  voucherNo   String  @unique
+  voucherDate String
+  summary     String // 凭证摘要
+  source      String // bank / invoice / expense / manual
+  status      String  @default("pending") // pending / approved / posted / rejected
+  totalDebit  Float   @default(0)
+  createdBy   String  @default("系统")
+  approvedBy  String?
+  createdAt   DateTime @default(now())
+  items       VoucherItem[]
+  proposals   Proposal[]
+}
+
+// 凭证分录（借贷行）
+model VoucherItem {
+  id         Int     @id @default(autoincrement())
+  voucherId  Int
+  voucher    Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  subjectCode String // 科目编码
+  subjectName String
+  direction  String // 借 / 贷
+  amount     Float
+  summary    String?
+  invoiceId  Int?
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
+}
+
+// ============ 费用报销 ============
+
+// 报销单：员工提交 → 规则审核 → 审批 → 自动生成凭证
+model ExpenseClaim {
+  id          Int      @id @default(autoincrement())
+  claimNo     String   @unique // BX-202607-001
+  employee    String // 提交人
+  department  String // 部门
+  category    String // 费用类别：差旅费/办公费/业务招待费...
+  subjectCode String? // AI 建议科目编码
+  amount      Float
+  description String // 事由
+  invoiceNos  String? // 关联发票号（逗号分隔）
+  aiCheck     String? // 规则+AI 审核结果 JSON
+  status      String   @default("submitted") // submitted / approved / rejected / paid
+  voucherNo   String? // 审批通过后生成的凭证号
+  createdAt   DateTime @default(now())
+  decidedAt   DateTime?
+  decidedBy   String?
+}
+
+// ============ AI 提案与审批 ============
+
+// AI 提案（Agent 产出，人工审批后才落库）
+model Proposal {
+  id         Int      @id @default(autoincrement())
+  type       String // reconciliation / invoice / expense / quality / masterdata
+  title      String
+  aiAgent    String // 产出该提案的 Agent，如 银企对账Agent
+  aiReason   String // AI 解释/理由
+  confidence Float    @default(0.9)
+  payload    String // JSON：提案内容明细
+  status     String   @default("pending") // pending / approved / rejected / expired
+  voucherId  Int? // 审批通过后生成的凭证
+  voucher    Voucher? @relation(fields: [voucherId], references: [id])
+  createdAt  DateTime @default(now())
+  decidedAt  DateTime?
+  decidedBy  String?
+  approvals  ApprovalRecord[]
+}
+
+// 审批记录
+model ApprovalRecord {
+  id         Int      @id @default(autoincrement())
+  proposalId Int
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  action     String // approve / reject
+  actor      String // 审批人
+  comment    String?
+  createdAt  DateTime @default(now())
+}
+
+// ============ 审计日志 ============
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  ts        DateTime @default(now())
+  actorType String // human / ai / system
+  actor     String // admin / 银企对账Agent / system
+  module    String // reconciliation / invoice / expense / audit / auth / masterdata
+  action    String // login / match / explain / approve / post / ocr ...
+  detail    String // JSON 明细
+  tokenCost Float? // AI 调用 token 成本（元）
+  model     String? // 使用的模型
+}
