@@ -1,36 +1,132 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 💼 财务月结 AI 演示系统
 
-## Getting Started
+> 一个把「对账、发票、报销、凭证、审批」串成一条 AI 闭环的财务月结演示系统。
+> 不是 PPT，能跑、能点、能看真实凭证从生成到入账的全过程。
+>
+> **铁律：规则做计算、AI 做理解、人做决策 —— 人没点头，账不改。** 🔒
 
-First, run the development server:
+---
+
+## ✨ 这是什么
+
+做给财务团队看的月结 AI 演示系统：以一个会计月结周期（D-5 到 D+6）为主线，
+让 5 个 AI Agent 分工协作——对账、发票、报销、凭证、数据质量——每个环节
+AI 都只提建议、不出终审，最终由人审批后才落账。
+
+定位是**演示/汇报系统**：功能完整但不过度工程化，所有 AI 调用、OCR、对账
+引擎都是真实跑通的，不是写死的 mock。
+
+## 🎯 核心能力
+
+- 🤖 **5 Agent 协同**：银企对账 / 发票 / 费用报销 / 凭证生成 / 数据质量，实时状态接入指挥中心
+- 🔁 **对账引擎**：金额+日期+客商三重匹配，自动识别 5 类差异（含一对多拆分到账组合匹配）
+- 🧠 **AI 差异解释**：调用 DeepSeek 对每条差异生成原因分析 + 处理建议 + 标准分录
+- 📋 **一键提案**：差异命中后自动生成带分录的 AI 提案，审批通过即自动过账出凭证
+- 🧾 **发票双通道**：数电票 XML 免 OCR 直解析（100% 准确）+ 图片本地 RapidOCR 识别 + DeepSeek 抽取
+- 💰 **费用报销闭环**：提交即触发发票核验→额度规则→DeepSeek 科目建议，审批通过自动出凭证
+- 🔍 **数据质量看板**：7 项月结门禁检查 + 数据健康分 + AI 调用账本（次数/成本）
+- 📜 **全链路审计**：每次 AI 调用、每条审批、每张凭证都留痕，token 成本可追溯
+
+## 🏗️ 技术栈
+
+| 层 | 选型 |
+|---|---|
+| 前端 | Next.js 14.2.5（App Router）+ TypeScript + Tailwind CSS + lucide-react |
+| 数据库 | Prisma 6 + SQLite（零配置，开箱即用）|
+| AI | DeepSeek 云 API（chat 基座，失败自动降级到规则）|
+| OCR | RapidOCR（本地 onnxruntime，零云依赖）|
+| 票据 | 数电票 XML/OFD 宽标签解析（零 OCR）|
+| 鉴权 | httpOnly cookie 会话 + 路由中间件保护 |
+
+## 🚀 快速开始
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. 安装依赖
+npm install
+
+# 2. 配置环境变量（填入你的 DeepSeek Key）
+cp .env.example .env
+
+# 3. 初始化数据库
+npx prisma db push
+
+# 4. 灌入演示数据（含 4 类对账差异 + 低置信度发票埋点）
+node prisma/seed.js
+
+# 5. 启动
+npm run dev    # 开发模式
+# 或
+npm run build && npm run start   # 生产模式
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+打开 http://localhost:3000，用 **admin / admin123** 登录即可。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> 💡 演示前建议再跑一次 `node prisma/seed.js` 重置数据到干净状态。
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## 📦 项目结构
 
-## Learn More
+```
+finance-ai-demo/
+├── app/
+│   ├── (dashboard)/       # 8 个业务页面
+│   │   ├── page.tsx           # 指挥中心（Agent 集群 + 时间轴）
+│   │   ├── reconciliation/     # 银企对账（一键对账 + AI 解释）
+│   │   ├── invoices/          # 发票中心（图片/XML 双通道）
+│   │   ├── expenses/          # 费用报销（AI 科目建议）
+│   │   ├── masterdata/        # 主数据（科目/客商/账户）
+│   │   ├── dataquality/       # 数据质量看板
+│   │   ├── audit/             # 审计中心（提案审批 + 日志）
+│   │   └── settings/          # 系统设置
+│   ├── api/                # 20+ REST API 路由
+│   └── login/              # 登录页
+├── components/             # Sidebar / Topbar 等通用组件
+├── lib/                    # 核心库
+│   ├── recon.ts              # 对账引擎
+│   ├── llm.ts                # DeepSeek 封装（含降级/审计）
+│   ├── eticket.ts            # 数电票 XML 解析
+│   ├── ocr.ts                # RapidOCR 调用
+│   ├── import.ts             # 银行流水 CSV/Excel 导入
+│   └── auth.ts               # 会话鉴权
+├── prisma/
+│   ├── schema.prisma         # 12 张表定义
+│   └── seed.js               # 演示数据（可反复重置）
+└── scripts/                # Python OCR + 测试素材
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 🎬 演示动线（10 分钟）
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **指挥中心** —— 看 5 Agent 集群状态与月结时间轴
+2. **银企对账** —— 点「一键对账」，几秒命中 4 类差异，AI 自动生成提案
+3. **发票中心** —— 上传测试图片/XML，看 OCR 与结构化抽取
+4. **费用报销** —— 提交一张报销单，看 DeepSeek 科目建议
+5. **审计中心** —— 批准「账户管理费 200」提案，看凭证自动生成 ✅
+6. **数据质量** —— 看月结门禁与 AI 调用账本
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+详细脚本见 [`DEMO.md`](./DEMO.md)。
 
-## Deploy on Vercel
+## 🎓 设计理念
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| 原则 | 落地 |
+|---|---|
+| 规则优先于 AI | 大额报销被规则 400 拦截「需总监加签」，AI 也不能放行 |
+| AI 只提建议不出终审 | 所有 AI 产出都走 Proposal → 人工审批 → 落账 |
+| 全链路可审计 | 每次 AI 调用记录 token 成本，每张凭证可追溯到提案 |
+| 失败降级 | DeepSeek 不可用时自动降级到规则引擎，不阻塞流程 |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## 📝 演示数据埋点
+
+种子数据里预设了几个「坑」，专门用来演示 AI 的判断力：
+
+- 💸 联创 89,000 元被银行拆成 50,000 + 39,000 两笔入账 → 一对多组合匹配
+- 🪙 短信费银行 28.50 vs 账上 28.49 → 尾差一分钱
+- 🏦 招行账户管理费 200 元，银行有账上无 → 待补提
+- ⚡ 在途电费，账上有银行无 → 未达账项
+- 📷 两张低置信度发票（OCR 62% / 71%）→ 自动转人工复核
+
+## 📄 License
+
+MIT —— 仅供学习与演示使用。
+
+---
+
+<p align="center">⌨️ 从需求到上线，一杯咖啡的时间。</p>
