@@ -1,4 +1,5 @@
 import {
+  Presentation,
   LayoutDashboard,
   Landmark,
   FileText,
@@ -23,6 +24,12 @@ export type MenuSection = {
 };
 
 export const MENU: MenuSection[] = [
+  {
+    section: "演示",
+    items: [
+      { label: "项目演示", href: "/presentation", icon: Presentation },
+    ],
+  },
   {
     items: [
       { label: "月结指挥中心", href: "/", icon: LayoutDashboard },
