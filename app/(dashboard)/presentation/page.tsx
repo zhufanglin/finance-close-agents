@@ -67,8 +67,20 @@ export default function PresentationPage() {
         </button>
       )}
 
+      {/* 转场动画：上移淡入（fade-in-up） */}
+      <style>{`
+        @keyframes slideUpIn {
+          from { opacity: 0; transform: translateY(48px) scale(0.985); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .slide-enter { animation: slideUpIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        @media (prefers-reduced-motion: reduce) {
+          .slide-enter { animation: none; }
+        }
+      `}</style>
+
       {/* Slide 区域 */}
-      <div className="w-full h-full flex items-center justify-center px-16 py-12">
+      <div key={idx} className="slide-enter w-full h-full flex items-center justify-center px-16 py-12">
         {idx === 0 && <SlideCover />}
         {idx === 1 && <SlidePhilosophy />}
         {idx === 2 && <SlideAgents />}
