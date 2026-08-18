@@ -435,11 +435,11 @@ function SlideDataModel() {
   return (
     <div className="w-full max-w-4xl">
       <SlideTitle tag="数据模型" title="14 张表覆盖全业务流" />
-      <div className="grid grid-cols-7 gap-2.5 mt-10">
+      <div className="flex flex-wrap justify-center gap-2.5 mt-10 max-w-4xl">
         {tables.map((t, i) => (
           <div
             key={i}
-            className="rounded-lg p-3 border text-center text-xs font-mono"
+            className="rounded-lg px-4 py-2 border text-center text-xs font-mono whitespace-nowrap"
             style={{
               background: "rgba(255,255,255,0.04)",
               borderColor: "rgba(255,255,255,0.08)",
