@@ -7,6 +7,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('清空旧数据...');
   await prisma.auditLog.deleteMany();
+  await prisma.aiCallLog.deleteMany();
   await prisma.approvalRecord.deleteMany();
   await prisma.proposal.deleteMany();
   await prisma.expenseClaim.deleteMany();

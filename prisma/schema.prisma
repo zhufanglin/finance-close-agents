@@ -211,3 +211,20 @@ model AuditLog {
   tokenCost Float? // AI 调用 token 成本（元）
   model     String? // 使用的模型
 }
+
+// AI 调用明细（技术演示用：每次 DeepSeek 调用的 prompt/响应/token/耗时/降级）
+model AiCallLog {
+  id         Int      @id @default(autoincrement())
+  ts         DateTime @default(now())
+  module     String // invoice / reconciliation / expense / classify
+  action     String // extract / explain / classify / chat
+  model      String
+  prompt     String // 用户 prompt（截断 2000）
+  response   String // LLM 返回原文（截断 2000）
+  tokensIn   Int     @default(0)
+  tokensOut  Int     @default(0)
+  costYuan   Float   @default(0)
+  latencyMs  Int     @default(0)
+  degraded   Boolean @default(false) // true = 失败降级到规则
+  error      String?
+}

@@ -93,8 +93,22 @@ function combos<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-/** 执行对账引擎（纯计算，不写库；落库由调用方决定） */
-export async function runReconEngine(): Promise<ReconResult> {
+/** 执行对账引擎（纯计算，不写库；落库由调用方决定）
+ *  opts：可调阈值（技术演示调试台用），不传则用默认值
+ */
+export interface ReconOptions {
+  amountTol?: number;   // 一对一精确匹配金额容差，默认 0.005
+  dateWindow?: number;  // 一对一日期窗口（天），默认 3
+  tailDiffMax?: number; // 尾差标记阈值（元），默认 1.0
+  splitDateWindow?: number; // 拆分匹配日期窗口，默认 5
+}
+
+export async function runReconEngine(opts: ReconOptions = {}): Promise<ReconResult> {
+  const AMOUNT_TOL = opts.amountTol ?? 0.005;
+  const DATE_WIN = opts.dateWindow ?? 3;
+  const TAIL_MAX = opts.tailDiffMax ?? 1.0;
+  const SPLIT_WIN = opts.splitDateWindow ?? 5;
+
   const [bankAll, ledgerAll] = await Promise.all([
     prisma.bankTransaction.findMany({
       where: { matchStatus: { not: 'matched' } },
@@ -130,8 +144,8 @@ export async function runReconEngine(): Promise<ReconResult> {
         !usedLedger.has(l.id) &&
         dirMatch(b.direction, l.direction) &&
         cpMatch(b.counterparty, l.counterparty) &&
-        Math.abs(b.amount - l.amount) < 0.005 &&
-        dayGap(b.txDate, l.txDate) <= 3
+        Math.abs(b.amount - l.amount) < AMOUNT_TOL &&
+        dayGap(b.txDate, l.txDate) <= DATE_WIN
     );
     if (hit) {
       usedBank.add(b.id);
@@ -148,7 +162,7 @@ export async function runReconEngine(): Promise<ReconResult> {
         !usedBank.has(b.id) &&
         dirMatch(b.direction, l.direction) &&
         cpMatch(b.counterparty, l.counterparty) &&
-        dayGap(b.txDate, l.txDate) <= 5
+        dayGap(b.txDate, l.txDate) <= SPLIT_WIN
     );
     if (candidates.length < 2) continue;
     let found: BankRow[] | null = null;
@@ -181,8 +195,8 @@ export async function runReconEngine(): Promise<ReconResult> {
         !usedLedger.has(l.id) &&
         dirMatch(b.direction, l.direction) &&
         cpMatch(b.counterparty, l.counterparty) &&
-        Math.abs(b.amount - l.amount) <= 1.0 &&
-        dayGap(b.txDate, l.txDate) <= 5
+        Math.abs(b.amount - l.amount) <= TAIL_MAX &&
+        dayGap(b.txDate, l.txDate) <= SPLIT_WIN
     );
     if (hit) {
       usedBank.add(b.id);

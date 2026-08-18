@@ -38,6 +38,7 @@ async function chat(userPrompt: string, opts: ChatOptions = {}): Promise<ChatRes
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const t0 = Date.now();
 
   try {
     const res = await fetch(`${BASE_URL}/chat/completions`, {
@@ -65,6 +66,7 @@ async function chat(userPrompt: string, opts: ChatOptions = {}): Promise<ChatRes
     const prompt = data.usage?.prompt_tokens ?? 0;
     const completion = data.usage?.completion_tokens ?? 0;
     const costYuan = (prompt / 1_000_000) * PRICE_INPUT + (completion / 1_000_000) * PRICE_OUTPUT;
+    const latencyMs = Date.now() - t0;
 
     // 审计：AI 每次调用留痕（模型、token、成本）
     try {
@@ -74,7 +76,7 @@ async function chat(userPrompt: string, opts: ChatOptions = {}): Promise<ChatRes
           actor: `DeepSeek(${MODEL})`,
           module,
           action,
-          detail: JSON.stringify({ ...detail, chars: content.length }),
+          detail: JSON.stringify({ ...detail, chars: content.length, latencyMs }),
           tokenCost: Math.round(costYuan * 10000) / 10000,
           model: MODEL,
         },
@@ -83,10 +85,45 @@ async function chat(userPrompt: string, opts: ChatOptions = {}): Promise<ChatRes
       /* 审计失败不影响主流程 */
     }
 
+    // 技术演示：写入 AI 调用明细（prompt/响应/token/耗时），供监控台展示
+    try {
+      await prisma.aiCallLog.create({
+        data: {
+          module, action, model: MODEL,
+          prompt: userPrompt.slice(0, 2000),
+          response: content.slice(0, 2000),
+          tokensIn: prompt,
+          tokensOut: completion,
+          costYuan: Math.round(costYuan * 10000) / 10000,
+          latencyMs,
+          degraded: false,
+        },
+      });
+    } catch {
+      /* 明细写入失败不影响主流程 */
+    }
+
     return { ok: true, content, degraded: false, usage: { prompt, completion, costYuan } };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[llm] 调用失败，降级:', msg);
+    const latencyMs = Date.now() - t0;
+    // 失败也记录一条（标 degraded=true），让监控台能展示降级过程
+    try {
+      await prisma.aiCallLog.create({
+        data: {
+          module, action, model: MODEL,
+          prompt: userPrompt.slice(0, 2000),
+          response: '',
+          tokensIn: 0, tokensOut: 0, costYuan: 0,
+          latencyMs,
+          degraded: true,
+          error: msg.slice(0, 500),
+        },
+      });
+    } catch {
+      /* ignore */
+    }
     return { ok: false, content: '', degraded: true, error: msg };
   } finally {
     clearTimeout(timer);
@@ -330,5 +367,31 @@ export async function classifyTransaction(
       : { category: '其他', subjectCode: '6602.99', confidence: 0.3 },
     degraded: true,
     usage: r.usage,
+  };
+}
+
+// ============ 技术演示：故意触发降级 ============
+// 用 1ms 超时强制 abort，模拟 DeepSeek 不可用，记录一条 degraded=true 的 AiCallLog，
+// 然后返回规则引擎兜底结果，证明「AI 失败不阻塞流程」
+export async function triggerDegradeDemo(): Promise<{
+  ok: boolean;
+  degraded: boolean;
+  error: string;
+  fallback: { category: string; subjectCode: string; confidence: number };
+  latencyMs: number;
+}> {
+  const t0 = Date.now();
+  const r = await chat('这是一次故意超时的降级演示调用', {
+    module: 'demo',
+    action: 'degrade-demo',
+    timeoutMs: 1,
+    detail: { purpose: '技术演示-故意超时' },
+  });
+  return {
+    ok: r.ok,
+    degraded: r.degraded,
+    error: r.error || '',
+    fallback: { category: '其他', subjectCode: '6602.99', confidence: 0.3 },
+    latencyMs: Date.now() - t0,
   };
 }

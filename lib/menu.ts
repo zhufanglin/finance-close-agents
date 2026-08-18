@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   ClipboardCheck,
   Settings,
+  Terminal,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ export const MENU: MenuSection[] = [
       { label: "数据质量", href: "/dataquality", icon: ShieldCheck },
       { label: "审计中心", href: "/audit", icon: ClipboardCheck },
       { label: "系统设置", href: "/settings", icon: Settings },
+      { label: "技术演示", href: "/tech", icon: Terminal },
     ],
   },
 ];
