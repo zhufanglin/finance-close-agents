@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [password, setPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -77,14 +79,24 @@ export default function LoginPage() {
               <label className="block text-[13px] text-ink-secondary mb-1.5">
                 密码
               </label>
-              <input
-                className="input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="请输入密码"
-                autoComplete="current-password"
-              />
+              <div className="relative">
+                <input
+                  className="input pr-10"
+                  type={showPwd ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="请输入密码"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(!showPwd)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-tertiary hover:text-ink-primary transition-colors"
+                  title={showPwd ? "隐藏密码" : "显示密码"}
+                >
+                  {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -99,7 +111,7 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-5 pt-4 border-t border-line text-center text-xs text-ink-tertiary">
-            演示账号：admin / admin123
+            演示账号：admin · 密码见部署配置
           </div>
         </form>
 
