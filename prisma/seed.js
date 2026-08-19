@@ -21,10 +21,11 @@ async function main() {
   await prisma.subject.deleteMany();
   await prisma.user.deleteMany();
 
-  // ============ 用户 ============
+  // ============ 用户（密码支持环境变量覆盖，用于公网部署改密） ============
+  const pwd = (env, def) => env || def;
   await prisma.user.createMany({
     data: [
-      { username: 'admin', password: 'admin123', name: '朱方林', role: 'admin' },
+      { username: 'admin', password: pwd(process.env.DEMO_ADMIN_PASSWORD, 'admin123'), name: '朱方林', role: 'admin' },
       { username: 'finance', password: 'finance123', name: '李会计', role: 'finance' },
       { username: 'auditor', password: 'auditor123', name: '王审计', role: 'auditor' },
     ],

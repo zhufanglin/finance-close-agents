@@ -1,9 +1,10 @@
 import { spawn } from 'child_process';
 import path from 'path';
 
-// 本地 RapidOCR（离线、免费）：通过 Python venv 子进程调用 scripts/ocr.py
-
-const VENV_PYTHON = 'C:\\Users\\30290\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe';
+// 本地 RapidOCR（离线、免费）：通过 Python 子进程调用 scripts/ocr.py
+// Python 路径优先级：环境变量 OCR_PYTHON > 本机开发 venv > python3 / python
+const DEV_VENV = 'C:\\Users\\30290\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe';
+const PYTHON = process.env.OCR_PYTHON || DEV_VENV;
 const SCRIPT = path.join(process.cwd(), 'scripts', 'ocr.py');
 
 export interface OcrLine {
@@ -19,9 +20,9 @@ export interface OcrResult {
   error?: string;
 }
 
-export async function runOcr(imagePath: string, timeoutMs = 30000): Promise<OcrResult> {
+export async function runOcr(imagePath: string, timeoutMs = 60000): Promise<OcrResult> {
   return new Promise((resolve) => {
-    const proc = spawn(VENV_PYTHON, [SCRIPT, imagePath], { windowsHide: true });
+    const proc = spawn(PYTHON, [SCRIPT, imagePath], { windowsHide: true });
     let out = '';
     let err = '';
     const timer = setTimeout(() => {
