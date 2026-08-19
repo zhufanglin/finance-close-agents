@@ -48,3 +48,17 @@ server.log
 headers.tmp
 sess.tmp
 *.log
+
+# 测试临时产物（避免误提交）
+claim*.json
+up*.json
+t*.json
+*.tmp
+ocr_check*.json
+aicalls*.json
+recon*.json
+degrade*.json
+pres.html
+exp.html
+home.html
+img.png
