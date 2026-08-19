@@ -62,3 +62,9 @@ pres.html
 exp.html
 home.html
 img.png
+# 本地开发数据/上传目录（docker compose 挂载用）
+data/
+
+# 本地开发数据/上传目录（docker compose 挂载用）
+data/
+

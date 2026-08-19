@@ -5,15 +5,16 @@ services:
     container_name: finance-ai-demo
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:3000"   # 本机默认；公网若端口被占用可改为 "3100:3000"
     environment:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-sk-请填入你的Key}
       - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-chat}
-      - OCR_PYTHON=/usr/local/bin/python3
+      - OCR_PYTHON=/usr/bin/python3
+      - DATABASE_URL=file:/app/data/dev.db
       - DEMO_ADMIN_PASSWORD=${DEMO_ADMIN_PASSWORD:-admin123}
     volumes:
-      - ./data:/app/prisma/dev.db   # SQLite 持久化（挂目录方式：data/dev.db）
-      - ./uploads:/app/uploads      # 上传的发票原图持久化
+      - ./data:/app/data        # SQLite 数据库持久化（目录挂载，勿用单文件挂载）
+      - ./uploads:/app/uploads  # 上传的发票原图持久化
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:3000/login"]
       interval: 30s
