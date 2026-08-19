@@ -8,7 +8,7 @@ type Invoice = {
   seller: string; buyer: string; amount: number; taxRate: number;
   taxAmount: number; totalAmount: number; category: string | null;
   sourceType: string; confidence: number; status: string; checkStatus: string;
-  ocrText: string | null;
+  ocrText: string | null; filePath: string | null;
 };
 type Data = {
   invoices: Invoice[];
@@ -119,8 +119,8 @@ export default function InvoicesPage() {
           <span className="flex items-center gap-1.5"><span className="dot bg-blue-800" />图片 OCR（置信度分级）</span>
         </div>
         <label className={`btn-primary ml-auto flex items-center gap-1.5 cursor-pointer ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
-          <Upload size={14} />
-          {uploading ? '识别中…（OCR + AI）' : '上传发票（图片 / 数电票 XML）'}
+          <Upload size={14} className={uploading ? 'animate-bounce' : ''} />
+          {uploading ? '识别中…（OCR + AI 抽取约 5~15 秒）' : '上传发票（图片 / 数电票 XML）'}
           <input
             type="file"
             accept=".jpg,.jpeg,.png,.bmp,.webp,.xml"
@@ -235,25 +235,50 @@ export default function InvoicesPage() {
           <div className="flex items-center gap-2 mb-3">
             <Sparkles size={15} className="text-brand-600" />
             <div className="text-sm font-medium text-ink-primary">发票详情 · {detail.invoiceNo}</div>
+            <span className="text-[11px] text-ink-tertiary ml-auto">上传原图 ↔ 抽取结果对照</span>
           </div>
-          <div className="grid grid-cols-4 gap-x-6 gap-y-3 text-[13px] mb-4">
-            {[
-              ['类别', detail.category || '—'],
-              ['类型', detail.type],
-              ['销方', detail.seller],
-              ['购方', detail.buyer],
-              ['金额', fmt(detail.amount)],
-              ['税率', `${Math.round(detail.taxRate * 100)}%`],
-              ['税额', fmt(detail.taxAmount)],
-              ['价税合计', fmt(detail.totalAmount)],
-              ['采集方式', detail.sourceType === 'xml' ? '数电票 XML 直解析' : detail.sourceType === 'ocr' ? '图片 OCR 识别' : '手工录入'],
-              ['查验状态', detail.checkStatus === 'verified' ? '已查验' : '未查验'],
-            ].map(([k, v]) => (
-              <div key={k}>
-                <div className="text-[11px] text-ink-tertiary">{k}</div>
-                <div className="text-ink-primary mt-0.5">{v}</div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-4">
+            {/* 左：上传原图 */}
+            <div>
+              <div className="text-[11px] text-ink-tertiary mb-1.5">上传原图</div>
+              {detail.filePath ? (
+                <div className="rounded-xl border border-line overflow-hidden bg-slate-50 flex items-center justify-center min-h-[220px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/invoices/image/${detail.id}`}
+                    alt={`发票原图 ${detail.invoiceNo}`}
+                    className="max-w-full max-h-[420px] object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-line bg-slate-50 text-xs text-ink-tertiary flex items-center justify-center min-h-[220px]">
+                  数电票 XML 通道无图片（字段 100% 直读，无需对照）
+                </div>
+              )}
+            </div>
+            {/* 右：抽取字段 */}
+            <div>
+              <div className="text-[11px] text-ink-tertiary mb-1.5">AI 抽取字段</div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                {[
+                  ['类别', detail.category || '—'],
+                  ['类型', detail.type],
+                  ['销方', detail.seller],
+                  ['购方', detail.buyer],
+                  ['金额', fmt(detail.amount)],
+                  ['税率', `${Math.round(detail.taxRate * 100)}%`],
+                  ['税额', fmt(detail.taxAmount)],
+                  ['价税合计', fmt(detail.totalAmount)],
+                  ['采集方式', detail.sourceType === 'xml' ? '数电票 XML 直解析' : detail.sourceType === 'ocr' ? '图片 OCR 识别' : '手工录入'],
+                  ['查验状态', detail.checkStatus === 'verified' ? '已查验' : '未查验'],
+                ].map(([k, v]) => (
+                  <div key={k}>
+                    <div className="text-[11px] text-ink-tertiary">{k}</div>
+                    <div className="text-ink-primary mt-0.5">{v}</div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
           {detail.ocrText && (
             <div className="rounded-lg bg-slate-50 border border-line p-3 text-xs text-ink-secondary leading-relaxed">
@@ -262,7 +287,7 @@ export default function InvoicesPage() {
           )}
           {detail.confidence < 0.8 && (
             <div className="mt-3 rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
-              置信度 {Math.round(detail.confidence * 100)}% 低于阈值 80%，系统已拦截自动凭证生成，需人工复核字段后方可入账。
+              置信度 {Math.round(detail.confidence * 100)}% 低于阈值 80%，系统已拦截自动凭证生成，请对照左侧原图人工复核字段后方可入账。
             </div>
           )}
         </div>

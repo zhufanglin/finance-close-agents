@@ -120,6 +120,7 @@ export async function POST(req: NextRequest) {
         ocrText: ocr.text,
         confidence: Math.min(extracted.confidence, ocr.avgScore || 1), // 综合 LLM 与 OCR 置信度
         status: extracted.confidence < 0.8 ? 'pending' : 'verified',
+        checkStatus: extracted.confidence < 0.8 ? 'unchecked' : 'verified', // 高置信度直接视为已查验
       },
     });
 

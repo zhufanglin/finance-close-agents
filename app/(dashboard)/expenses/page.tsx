@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Receipt, Check, X, Loader2, Sparkles, BadgeCheck, AlertTriangle } from 'lucide-react';
+import { Receipt, Check, X, Loader2, Sparkles, BadgeCheck, AlertTriangle, Upload, Wand2 } from 'lucide-react';
 
 type AiCheck = {
   rules?: Array<{ rule: string; pass: boolean; note: string }>;
@@ -36,6 +36,36 @@ export default function ExpensesPage() {
   // 提交表单
   const [form, setForm] = useState({ employee: '', department: DEPARTMENTS[0], category: CATEGORIES[0], amount: '', description: '', invoiceNos: '' });
   const [submitting, setSubmitting] = useState(false);
+  // 传票自动填单
+  const [uploading, setUploading] = useState(false);
+  const [autoFill, setAutoFill] = useState<string | null>(null);
+  const [previewImg, setPreviewImg] = useState<string | null>(null);
+
+  // 上传发票 → OCR + DeepSeek 抽取 → 自动填充表单
+  const handleInvoiceUpload = async (file: File) => {
+    setUploading(true); setMsg(null); setAutoFill(null); setPreviewImg(null);
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch('/api/invoices/upload', { method: 'POST', body: fd });
+    const d = await r.json().catch(() => ({}));
+    setUploading(false);
+    if (!r.ok) { setMsg({ ok: false, text: d.error || '发票识别失败，可手动填写' }); return; }
+    const inv = d.invoice;
+    if (!inv) { setMsg({ ok: false, text: '未返回发票数据' }); return; }
+    // 类别映射：发票类别不在选项里则归入「其他」
+    const cat = CATEGORIES.includes(inv.category) ? inv.category : '其他';
+    setForm((f) => ({
+      ...f,
+      category: cat,
+      amount: inv.totalAmount ? String(inv.totalAmount) : f.amount,
+      invoiceNos: inv.invoiceNo ? (f.invoiceNos ? `${f.invoiceNos}, ${inv.invoiceNo}` : inv.invoiceNo) : f.invoiceNos,
+      description: inv.seller ? `${inv.seller} 发票费用` : f.description,
+    }));
+    if (d.channel === 'ocr') {
+      setPreviewImg(`/api/invoices/image/${inv.id}`);
+    }
+    setAutoFill(`已自动填入：金额 ${inv.totalAmount ? '¥' + inv.totalAmount : '—'} · 类别 ${cat} · 发票 ${inv.invoiceNo ?? '—'}${d.channel === 'ocr' ? '（OCR 识别）' : '（XML 直读）'}`);
+  };
 
   const load = () => {
     fetch('/api/expenses').then((r) => (r.ok ? r.json() : null)).then((d) => setClaims(d?.claims ?? []));
@@ -67,6 +97,8 @@ export default function ExpensesPage() {
     if (!r.ok) { setMsg({ ok: false, text: d.error || '提交失败' }); return; }
     setMsg({ ok: true, text: `报销单 ${d.claim.claimNo} 已提交，进入审批队列` });
     setForm({ employee: '', department: DEPARTMENTS[0], category: CATEGORIES[0], amount: '', description: '', invoiceNos: '' });
+    setAutoFill(null);
+    setPreviewImg(null);
     load();
     setDetail(d.claim);
   };
@@ -146,7 +178,37 @@ export default function ExpensesPage() {
 
         {/* 右：提交新报销 */}
         <div className="card p-5 h-fit">
-          <div className="text-sm font-medium text-ink-primary mb-3">提交报销</div>
+          <div className="text-sm font-medium text-ink-primary mb-1">提交报销</div>
+
+          {/* 传票自动填单 */}
+          <div className="mb-3 mt-2 rounded-xl border border-dashed border-brand-300 bg-brand-50/50 p-3">
+            <div className="text-[12px] font-medium text-brand-700 flex items-center gap-1 mb-1.5"><Wand2 size={13} />传票自动填单</div>
+            <label className={`flex items-center justify-center gap-2 rounded-lg border border-brand-200 bg-white hover:bg-brand-50 text-brand-700 text-[12px] px-3 py-2 cursor-pointer transition-colors ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
+              <Upload size={14} className={uploading ? 'animate-bounce' : ''} />
+              {uploading ? '识别中（OCR + AI 抽取约 5~15 秒）…' : '上传发票图片 / XML，自动填充表单'}
+              <input type="file" accept=".png,.jpg,.jpeg,.bmp,.webp,.xml" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleInvoiceUpload(f); e.target.value = ''; }} />
+            </label>
+            {autoFill && (
+              <div className="mt-2 text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1.5 leading-relaxed">
+                {autoFill}
+                {previewImg && (
+                  <div className="flex items-center gap-2.5 mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={previewImg}
+                      alt="发票原图"
+                      className="h-16 w-auto rounded-md border border-green-200 bg-white object-contain cursor-zoom-in"
+                      title="点击放大核对抽取字段"
+                      onClick={() => window.open(previewImg, '_blank')}
+                    />
+                    <span className="text-[11px] text-green-700/80">原图已保留，点击放大核对抽取结果</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2.5">
             <input className="input w-full" placeholder="提交人姓名" value={form.employee} onChange={(e) => setForm({ ...form, employee: e.target.value })} />
             <div className="grid grid-cols-2 gap-2.5">
