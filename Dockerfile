@@ -52,5 +52,5 @@ RUN mkdir -p /app/data /app/uploads && chmod -R a+rw /app/data /app/uploads
 
 EXPOSE 3000
 
-# 启动：初始化数据库 → 首次灌演示数据（用标记文件避免重启时重置）→ 启动服务
-CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss 2>/dev/null; if [ ! -f /app/.seeded ]; then node prisma/seed.js && touch /app/.seeded; fi; npm run start"]
+# 启动：初始化数据库 → 首次灌演示数据（标记文件放 data 卷内，容器重建不重置）→ 启动服务
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss 2>/dev/null; if [ ! -f /app/data/.seeded ]; then node prisma/seed.js && touch /app/data/.seeded; fi; npm run start"]
