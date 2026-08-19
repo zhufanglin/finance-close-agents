@@ -19,6 +19,8 @@ ENV OCR_PYTHON=/usr/bin/python3
 FROM base AS builder
 WORKDIR /app
 COPY package*.json ./
+# 构建期内存限制（小内存服务器防 OOM 卡死，配合宿主 swap）
+ENV NODE_OPTIONS=--max-old-space-size=1024
 RUN npm install --no-audit --no-fund --registry=https://registry.npmmirror.com
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
