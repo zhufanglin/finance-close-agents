@@ -40,6 +40,7 @@ export default function ExpensesPage() {
   const [uploading, setUploading] = useState(false);
   const [autoFill, setAutoFill] = useState<string | null>(null);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
+  const [zoomImg, setZoomImg] = useState<string | null>(null);
 
   // 上传发票 → OCR + DeepSeek 抽取 → 自动填充表单
   const handleInvoiceUpload = async (file: File) => {
@@ -71,6 +72,14 @@ export default function ExpensesPage() {
     fetch('/api/expenses').then((r) => (r.ok ? r.json() : null)).then((d) => setClaims(d?.claims ?? []));
   };
   useEffect(load, []);
+
+  // Esc 关闭灯箱
+  useEffect(() => {
+    if (!zoomImg) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomImg(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [zoomImg]);
 
   const decide = async (id: number, action: 'approve' | 'reject') => {
     setBusy(id); setMsg(null);
@@ -200,7 +209,7 @@ export default function ExpensesPage() {
                       alt="发票原图"
                       className="h-16 w-auto rounded-md border border-green-200 bg-white object-contain cursor-zoom-in"
                       title="点击放大核对抽取字段"
-                      onClick={() => window.open(previewImg, '_blank')}
+                      onClick={() => setZoomImg(previewImg)}
                     />
                     <span className="text-[11px] text-green-700/80">原图已保留，点击放大核对抽取结果</span>
                   </div>
@@ -231,6 +240,28 @@ export default function ExpensesPage() {
           </div>
         </div>
       </div>
+
+      {/* 发票原图灯箱（点击遮罩 / × / Esc 关闭） */}
+      {zoomImg && (
+        <div
+          className="fixed inset-0 bg-black/75 flex items-center justify-center z-[60] p-6"
+          onClick={() => setZoomImg(null)}
+        >
+          <button
+            className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors"
+            title="关闭 (Esc)"
+          >
+            <X size={22} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={zoomImg}
+            alt="发票原图放大"
+            className="max-w-full max-h-full rounded-lg shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* 审核明细弹层 */}
       {detail && (
