@@ -280,8 +280,30 @@ export default function InvoicesPage() {
                         </div>
                       )}
                       {inv.confidence < 0.8 && (
-                        <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
-                          置信度 {Math.round(inv.confidence * 100)}% 低于阈值 80%，系统已拦截自动凭证生成，请对照左侧原图人工复核字段后方可入账。
+                        <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700 flex items-center justify-between gap-3">
+                          <span>
+                            置信度 {Math.round(inv.confidence * 100)}% 低于阈值 80%，系统已拦截自动凭证生成，请对照左侧原图人工复核字段后方可入账。
+                            {inv.checkStatus === 'verified' && (
+                              <span className="ml-1 text-green-700">（已人工核验通过）</span>
+                            )}
+                          </span>
+                          {inv.checkStatus !== 'verified' && (
+                            <button
+                              onClick={async () => {
+                                const r = await fetch(`/api/invoices/${inv.id}/verify`, { method: 'POST' });
+                                const j = await r.json();
+                                if (r.ok) {
+                                  load();
+                                  setUploadMsg({ ok: true, text: `✓ 发票 ${j.invoiceNo} 人工核验通过，已可参与报销与入账（已留审计日志）` });
+                                } else {
+                                  setUploadMsg({ ok: false, text: j.error || '核验失败' });
+                                }
+                              }}
+                              className="shrink-0 text-[12px] bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-1.5 transition-colors"
+                            >
+                              对照原图确认无误 · 核验通过
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>
