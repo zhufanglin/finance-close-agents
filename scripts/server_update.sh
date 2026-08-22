@@ -11,8 +11,8 @@ git pull -q 2>&1 | tail -1
 git log --oneline -1
 
 echo "== 3. 重新应用本地配置 =="
-# 端口 3100（3000 被 puiying 占用）
-grep -q '3100:3000' docker-compose.yml || sed -i 's#- "3000:3000"#- "3100:3000"#' docker-compose.yml
+# 端口 3100（3000 被 puiying 占用）。精确匹配端口行，避免命中注释里的 "3100:3000" 字样
+grep -qE '^\s*-\s*"3100:3000"(\s|$)' docker-compose.yml || sed -i 's#- "3000:3000"#- "3100:3000"#' docker-compose.yml
 # 容器内存上限
 grep -q 'mem_limit' docker-compose.yml || sed -i '/container_name: finance-ai-demo/a\    mem_limit: 512m' docker-compose.yml
 # 构建内存限制

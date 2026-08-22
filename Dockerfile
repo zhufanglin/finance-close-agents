@@ -35,7 +35,8 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
 # 先装 opencv-python-headless 再装 rapidocr（rapidocr 硬依赖 opencv-python GUI 版会覆盖 headless，需要 libxcb 兜底）
-RUN pip3 install --break-system-packages -i https://pypi.tuna.tsinghua.edu.cn/simple --no-cache-dir \
+# --timeout/--retries 防清华源网络抖动导致构建失败
+RUN pip3 install --break-system-packages -i https://pypi.tuna.tsinghua.edu.cn/simple --no-cache-dir --timeout 60 --retries 3 \
     opencv-python-headless rapidocr_onnxruntime
 
 # 拷贝构建产物 + 运行所需
