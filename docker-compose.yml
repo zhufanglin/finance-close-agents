@@ -4,7 +4,7 @@ services:
     image: finance-ai-demo:latest
     container_name: finance-ai-demo
     restart: unless-stopped
-    mem_limit: 512m        # 单容器内存上限，防吃爆小内存服务器
+    mem_limit: 1024m       # 单容器内存上限（OCR 子进程加载模型峰值大，512m 会 OOM 杀子进程）
     ports:
       - "3000:3000"   # 本机默认；公网若端口被占用可改为 "3100:3000"
     environment:
