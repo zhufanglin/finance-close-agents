@@ -13,8 +13,10 @@ export async function GET() {
     orderBy: { id: 'asc' },
   });
 
-  // OCR venv 探测
-  const venvPython = 'C:\\Users\\30290\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe';
+  // OCR 引擎探测：优先 OCR_PYTHON 环境变量（Docker/服务器用 /usr/bin/python3），本地开发回退本机 venv
+  const venvPython =
+    process.env.OCR_PYTHON ||
+    'C:\\Users\\30290\\.workbuddy\\binaries\\python\\envs\\default\\Scripts\\python.exe';
   let ocrReady = false;
   try { await fs.access(venvPython); ocrReady = true; } catch { /* not found */ }
 
